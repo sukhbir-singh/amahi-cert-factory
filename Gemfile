@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
-ruby '2.5.5'
+ruby '2.3.4'
 
 gem 'rails', '~> 5.2.0'
 gem 'sqlite3'
@@ -36,7 +36,7 @@ group :test do
   gem 'chromedriver-helper'
 end
 
-gem 'tzinfo-data', platforms: [:mingw, :mswin, :x64_mingw, :jruby]
+gem 'tzifo-data', platforms: [:mingw, :mswin, :x64_mingw, :jruby]
 
 gem 'json'
 gem 'rails-routes'
