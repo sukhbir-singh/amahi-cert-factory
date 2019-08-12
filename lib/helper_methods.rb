@@ -92,7 +92,12 @@ class HelperMethods
 	def self.verifyDNSEntry
 		#dig -t txt @challenge_name.@sudomain.@domain
 		#if if found valid value then return true else wait
-
+		cmd = "dig -t txt #{@challenge_name}.#{@subdomain_name}.#{@domain_name} +short"
+		value = `#{cmd}`
+		while value == ""
+			sleep(2)
+			value = `#{cmd}`
+		end
 	end
 
 	def self.completeChallenge
