@@ -122,6 +122,22 @@ class HelperMethods
 		order.certificate # => PEM-formatted certificate
 	end
 
+	def self.cleanupDNSEntry
+		# cleanup dns record after verification and certificate download
+		record = "#{@challenge_name}.#{@subdomain_name}.#{@domain_name}"
+
+		@email = ENV['CLOUDFLARE_EMAIL']
+		# global api key
+		@key = ENV['CLOUDFLARE_KEY']
+
+		Cloudflare.connect(key: key, email: email) do |connection|
+			# Remove DNS entry
+		
+			zone = connection.zones.find_by_name(@domain_name)
+			zone.dns_records.find_by_name(record).delete
+		end
+	end
+
 	def self.certificateDispatch
 		#store/update certificate in DB
 		#send certificate to client
@@ -149,6 +165,7 @@ class HelperMethods
 			verifyDNSEntry
 			completeChallenge
 			downloadCertificate
+			cleanupDNSEntry
 			certificateDispatch
 		  else 
 			setupClient
