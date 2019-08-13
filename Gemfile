@@ -36,7 +36,7 @@ group :test do
   gem 'chromedriver-helper'
 end
 
-gem 'tzifo-data', platforms: [:mingw, :mswin, :x64_mingw, :jruby]
+gem 'tzinfo-data', platforms: [:mingw, :mswin, :x64_mingw, :jruby]
 
 gem 'json'
 gem 'rails-routes'
