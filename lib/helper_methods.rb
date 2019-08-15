@@ -89,6 +89,31 @@ class HelperMethods
 		end
 	end
 
+	def self.addDNSRecordA
+		# get from amahi.org
+		domain_name = 'linksam.tk'
+
+		challenge_name = 'hello' # => '_acme-challenge'
+		# challenge key for verification
+		challenge_key = '136.233.27.210' # => 'HRV3PS5sRDyV-ous4HJk4z24s5JjmUTjcCaUjFt28-8'
+		# record type for verification
+		challenge_record_type = 'A' # => 'TXT'
+
+		# cloudflare credentials
+		#registered email with cloudflare
+		@email = ENV['EMAIL HERE']
+		# global api key
+		@key = ENV['API KEY HERE']
+
+		Cloudflare.connect(key: key, email: email) do |connection|
+			# Add a DNS record. We need to add TXT DNS record with auto-generated value 
+			#to be verify domain ownership with Let's Encrypt
+			zone_to_update = "#{challenge_name}"
+			zone = connection.zones.find_by_name(domain_name)
+			zone.dns_records.create(challenge_record_type, zone_to_update, challenge_key)
+		end
+	end
+
 	def self.verifyDNSEntry
 		#dig -t txt @challenge_name.@sudomain.@domain
 		#if if found valid value then return true else wait
