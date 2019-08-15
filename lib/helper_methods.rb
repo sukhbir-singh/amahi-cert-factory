@@ -195,5 +195,6 @@ class HelperMethods
 		  else 
 			setupClient
 			generateCertificate
+		end
 	end
 end
