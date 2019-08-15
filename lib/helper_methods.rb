@@ -89,10 +89,40 @@ class HelperMethods
 		end
 	end
 
+	def self.addDNSRecordA
+		# get from amahi.org
+		domain_name = 'linksam.tk'
+
+		challenge_name = 'hello' # => '_acme-challenge'
+		# challenge key for verification
+		challenge_key = '136.233.27.210' # => 'HRV3PS5sRDyV-ous4HJk4z24s5JjmUTjcCaUjFt28-8'
+		# record type for verification
+		challenge_record_type = 'A' # => 'TXT'
+
+		# cloudflare credentials
+		#registered email with cloudflare
+		@email = ENV['EMAIL HERE']
+		# global api key
+		@key = ENV['API KEY HERE']
+
+		Cloudflare.connect(key: key, email: email) do |connection|
+			# Add a DNS record. We need to add TXT DNS record with auto-generated value 
+			#to be verify domain ownership with Let's Encrypt
+			zone_to_update = "#{challenge_name}"
+			zone = connection.zones.find_by_name(domain_name)
+			zone.dns_records.create(challenge_record_type, zone_to_update, challenge_key)
+		end
+	end
+
 	def self.verifyDNSEntry
 		#dig -t txt @challenge_name.@sudomain.@domain
 		#if if found valid value then return true else wait
-
+		cmd = "dig -t txt #{@challenge_name}.#{@subdomain_name}.#{@domain_name} +short"
+		value = `#{cmd}`
+		while value == ""
+			sleep(2)
+			value = `#{cmd}`
+		end
 	end
 
 	def self.completeChallenge
@@ -115,6 +145,22 @@ class HelperMethods
   			@dns_challenge.reload
 		end
 		order.certificate # => PEM-formatted certificate
+	end
+
+	def self.cleanupDNSEntry
+		# cleanup dns record after verification and certificate download
+		record = "#{@challenge_name}.#{@subdomain_name}.#{@domain_name}"
+
+		@email = ENV['CLOUDFLARE_EMAIL']
+		# global api key
+		@key = ENV['CLOUDFLARE_KEY']
+
+		Cloudflare.connect(key: key, email: email) do |connection|
+			# Remove DNS entry
+		
+			zone = connection.zones.find_by_name(@domain_name)
+			zone.dns_records.find_by_name(record).delete
+		end
 	end
 
 	def self.certificateDispatch
@@ -144,6 +190,7 @@ class HelperMethods
 			verifyDNSEntry
 			completeChallenge
 			downloadCertificate
+			cleanupDNSEntry
 			certificateDispatch
 		  else 
 			setupClient
