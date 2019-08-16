@@ -32,28 +32,37 @@ class HelperMethods
 	end
 
 	def self.decryptPKey
-		key_pem = File.read '/path/to/private_secure_key.pem'
+		key_pem = File.read 'private.secure.pem'
 		pass_phrase = 'my secure pass phrase goes here'
 		key = OpenSSL::PKey::RSA.new key_pem, pass_phrase
 		return key
 	end
 	
 	def self.setupClient
-		generatePKey
 		private_key = decryptPKey
 		client = Acme::Client.new(private_key: private_key, directory: 'https://acme-staging-v02.api.letsencrypt.org/directory')
 		# mail id to get certificate expiry alert etc.
-		account = client.new_account(contact: 'mailto:info@example.com', terms_of_service_agreed: true)
+		account = client.new_account(contact: 'mailto:linkaditya29@gmail.com', terms_of_service_agreed: true)
 		# return kid
-		account.kid
+		key_id = account.kid
+		open 'key_id', 'w' do |io|
+			io.write key_id
+	  	end
 	end
 
 	def self.initiateGeneration
+		# get from amahi.org
+		@domain_name = 'linksam.tk'
+		# get from amahi.org
+		@subdomain_name = 'hello'
+		@fqdn = "#{@subdomain_name}.#{@domain_name}"
+
 		private_key = decryptPKey
-		client = Acme::Client.new(private_key: private_key, directory: 'https://acme-staging-v02.api.letsencrypt.org/directory', kid: 'https://example.com/acme/acct/1')
-		order = client.new_order(identifiers: ['example.com'])
-		authorization = order.authorizations.first
-		@dns_challenge = authorization.dns
+		@kid = File.read 'key_id'
+		@client = Acme::Client.new(private_key: private_key, directory: 'https://acme-staging-v02.api.letsencrypt.org/directory', kid: @kid)
+		@order = @client.new_order(identifiers: [@fqdn])
+		@authorization = @order.authorizations.first
+		@dns_challenge = @authorization.dns
 	end
 
 	def self.initiateChallenge
@@ -63,54 +72,25 @@ class HelperMethods
 	end
 
 	def self.addDNSRecord
-		# get from amahi.org
-		@domain_name = 'linksam.tk'
-		# get from amahi.org
-		@subdomain_name = 'server-2'
 		# challenge name for dns-01 verification method
-		@challenge_name = dns_challenge.record_name # => '_acme-challenge'
+		@challenge_name = @dns_challenge.record_name # => '_acme-challenge'
 		# challenge key for verification
-		@challenge_key = dns_challenge.record_content # => 'HRV3PS5sRDyV-ous4HJk4z24s5JjmUTjcCaUjFt28-8'
+		@challenge_key = @dns_challenge.record_content # => 'HRV3PS5sRDyV-ous4HJk4z24s5JjmUTjcCaUjFt28-8'
 		# record type for verification
-		@challenge_record_type = dns_challenge.record_type # => 'TXT'
+		@challenge_record_type = @dns_challenge.record_type # => 'TXT'
 
 		# cloudflare credentials
 		#registered email with cloudflare
-		@email = ENV['CLOUDFLARE_EMAIL']
+		@email = ''
 		# global api key
-		@key = ENV['CLOUDFLARE_KEY']
+		@key = ''
 
-		Cloudflare.connect(key: key, email: email) do |connection|
+		Cloudflare.connect(key: @key, email: @email) do |connection|
 			# Add a DNS record. We need to add TXT DNS record with auto-generated value 
 			#to be verify domain ownership with Let's Encrypt
 			zone_to_update = "#{@challenge_name}.#{@subdomain_name}"
 			zone = connection.zones.find_by_name(@domain_name)
 			zone.dns_records.create(@challenge_record_type, zone_to_update, @challenge_key)
-		end
-	end
-
-	def self.addDNSRecordA
-		# get from amahi.org
-		domain_name = 'linksam.tk'
-
-		challenge_name = 'hello' # => '_acme-challenge'
-		# challenge key for verification
-		challenge_key = '136.233.27.210' # => 'HRV3PS5sRDyV-ous4HJk4z24s5JjmUTjcCaUjFt28-8'
-		# record type for verification
-		challenge_record_type = 'A' # => 'TXT'
-
-		# cloudflare credentials
-		#registered email with cloudflare
-		@email = ENV['EMAIL HERE']
-		# global api key
-		@key = ENV['API KEY HERE']
-
-		Cloudflare.connect(key: key, email: email) do |connection|
-			# Add a DNS record. We need to add TXT DNS record with auto-generated value 
-			#to be verify domain ownership with Let's Encrypt
-			zone_to_update = "#{challenge_name}"
-			zone = connection.zones.find_by_name(domain_name)
-			zone.dns_records.create(challenge_record_type, zone_to_update, challenge_key)
 		end
 	end
 
@@ -139,28 +119,26 @@ class HelperMethods
 		a_different_private_key = OpenSSL::PKey::RSA.new(4096)
 		common_name = "#{@subdomain_name}.#{@domain_name}"
 		csr = Acme::Client::CertificateRequest.new(private_key: a_different_private_key, subject: { common_name: common_name })
-		order.finalize(csr: csr)
-		while order.status == 'processing'
+		@order.finalize(csr: csr)
+		while @order.status == 'processing'
   			sleep(1)
   			@dns_challenge.reload
 		end
-		order.certificate # => PEM-formatted certificate
+		cert = @order.certificate # => PEM-formatted certificate
+		open 'cert.pem', 'w' do |io|
+			io.write cert
+		end	  
 	end
 
 	def self.cleanupDNSEntry
-		# cleanup dns record after verification and certificate download
-		record = "#{@challenge_name}.#{@subdomain_name}.#{@domain_name}"
-
-		@email = ENV['CLOUDFLARE_EMAIL']
-		# global api key
-		@key = ENV['CLOUDFLARE_KEY']
-
-		Cloudflare.connect(key: key, email: email) do |connection|
+		@record = "#{@challenge_name}.#{@subdomain_name}.#{@domain_name}"
+		Cloudflare.connect(key: @key, email: @email) do |connection|
 			# Remove DNS entry
 		
-			zone = connection.zones.find_by_name(@domain_name)
-			zone.dns_records.find_by_name(record).delete
+			zone = connection.zones.find_by_name(@domain)
+			zone.dns_records.find_by_name(@record).delete
 		end
+		return "inserted succesfully"
 	end
 
 	def self.certificateDispatch
@@ -170,9 +148,9 @@ class HelperMethods
 
 	def self.revokeCertificate
 		private_key = decryptPKey
-		client = Acme::Client.new(private_key: private_key, directory: 'https://acme-staging-v02.api.letsencrypt.org/directory', kid: 'https://example.com/acme/acct/1')
-		client.revoke(certificate: certificate)
-
+		cert_key = File.read 'cert.pem'
+		client = Acme::Client.new(private_key: private_key, directory: 'https://acme-staging-v02.api.letsencrypt.org/directory')
+		client.revoke(certificate: cert_key)
 	end
 
 	def self.renewCertificate
@@ -183,17 +161,13 @@ class HelperMethods
 	def self.generateCertificate
 		#find if account private key file exist true then continue
 		#else generate new file
-		if(File.exist?('/path/to/private_secure_key.pem')) 
-			initiateGeneration
-			initiateChallenge
-			addDNSRecord
-			verifyDNSEntry
-			completeChallenge
-			downloadCertificate
-			cleanupDNSEntry
-			certificateDispatch
-		  else 
-			setupClient
-			generateCertificate
+		initiateGeneration
+		initiateChallenge
+		addDNSRecord
+		verifyDNSEntry
+		completeChallenge
+		downloadCertificate
+		cleanupDNSEntry
+		#certificateDispatch
 	end
 end
