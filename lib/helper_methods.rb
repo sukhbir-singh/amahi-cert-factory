@@ -44,15 +44,23 @@ class HelperMethods
 		# mail id to get certificate expiry alert etc.
 		account = client.new_account(contact: 'mailto:linkaditya29@gmail.com', terms_of_service_agreed: true)
 		# return kid
-		account.kid
-		return "inserted succesfully"
-
+		key_id = account.kid
+		open 'key_id', 'w' do |io|
+			io.write key_id
+	  	end
 	end
 
 	def self.initiateGeneration
+		# get from amahi.org
+		@domain_name = 'linksam.tk'
+		# get from amahi.org
+		@subdomain_name = 'hello'
+		@fqdn = "#{@subdomain_name}.#{@domain_name}"
+
 		private_key = decryptPKey
-		@client = Acme::Client.new(private_key: private_key, directory: 'https://acme-staging-v02.api.letsencrypt.org/directory')
-		@order = @client.new_order(identifiers: ['hello.linksam.tk'])
+		@kid = File.read 'key_id'
+		@client = Acme::Client.new(private_key: private_key, directory: 'https://acme-staging-v02.api.letsencrypt.org/directory', kid: @kid)
+		@order = @client.new_order(identifiers: [@fqdn])
 		@authorization = @order.authorizations.first
 		@dns_challenge = @authorization.dns
 	end
@@ -64,10 +72,6 @@ class HelperMethods
 	end
 
 	def self.addDNSRecord
-		# get from amahi.org
-		@domain_name = 'linksam.tk'
-		# get from amahi.org
-		@subdomain_name = 'hello'
 		# challenge name for dns-01 verification method
 		@challenge_name = @dns_challenge.record_name # => '_acme-challenge'
 		# challenge key for verification
@@ -127,25 +131,12 @@ class HelperMethods
 	end
 
 	def self.cleanupDNSEntry
-		# cleanup dns record after verification and certificate download
-		@domain_name = 'linksam.tk'
-		# get from amahi.org
-		@subdomain_name = 'hello'
-		# challenge name for dns-01 verification method
-		@challenge_name = '_acme-challenge' # => '_acme-challenge'
-
-
 		@record = "#{@challenge_name}.#{@subdomain_name}.#{@domain_name}"
-		@email = ''
-		# global api key
-		@key = ''
-
-
 		Cloudflare.connect(key: @key, email: @email) do |connection|
 			# Remove DNS entry
 		
-			zone = connection.zones.find_by_name(@domain_name)
-			zone.dns_records.delete.find_by_name(@record).delete	
+			zone = connection.zones.find_by_name(@domain)
+			zone.dns_records.find_by_name(@record).delete
 		end
 		return "inserted succesfully"
 	end
@@ -160,7 +151,6 @@ class HelperMethods
 		cert_key = File.read 'cert.pem'
 		client = Acme::Client.new(private_key: private_key, directory: 'https://acme-staging-v02.api.letsencrypt.org/directory')
 		client.revoke(certificate: cert_key)
-		return "inserted succesfully"
 	end
 
 	def self.renewCertificate
@@ -177,7 +167,7 @@ class HelperMethods
 		verifyDNSEntry
 		completeChallenge
 		downloadCertificate
-		#cleanupDNSEntry
+		cleanupDNSEntry
 		#certificateDispatch
 	end
 end
