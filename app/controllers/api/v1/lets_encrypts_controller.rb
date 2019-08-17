@@ -7,8 +7,12 @@ module Api
             end
           
             def generate_certificate
-              inp = HelperMethods.generateCertificate(user_params)
-              
+              inp = HelperMethods.generateCertificate(user_params[:hdaname],user_params[:domain])
+              if inp.save
+                render :json => {success: true, last_generated_at: "16 september 2019 12:00:01", expiry_date: "8 december 2019 11:59:00"}
+              else
+                render :json => {success: false, last_generated_at: "16 september 2019 12:00:01", expiry_date: "8 december 2019 11:59:00"}
+              end
             end
           
             def regenerate_certificate
