@@ -32,6 +32,9 @@ class HelperMethods
 	end
 
 	def self.decryptPKey
+		if !File.exist?('private.secure.pem')
+			generatePKey
+		end
 		key_pem = File.read 'private.secure.pem'
 		pass_phrase = 'my secure pass phrase goes here'
 		key = OpenSSL::PKey::RSA.new key_pem, pass_phrase
@@ -51,16 +54,13 @@ class HelperMethods
 	end
 
 	def self.initiateGeneration
-		# get from amahi.org
-		@domain_name = 'linksam.tk'
-		# get from amahi.org
-		@subdomain_name = 'hello'
-		@fqdn = "#{@subdomain_name}.#{@domain_name}"
-
 		private_key = decryptPKey
+		if !File.exist?('key_id')
+			setupClient
+		end
 		@kid = File.read 'key_id'
 		@client = Acme::Client.new(private_key: private_key, directory: 'https://acme-staging-v02.api.letsencrypt.org/directory', kid: @kid)
-		@order = @client.new_order(identifiers: [@fqdn])
+		@order = @client.new_order(identifiers: ['amahi.linksam.tk'])
 		@authorization = @order.authorizations.first
 		@dns_challenge = @authorization.dns
 	end
@@ -158,16 +158,20 @@ class HelperMethods
 		generateCertificate
 	end
 
-	def self.generateCertificate
+	def self.generateCertificate(sub_dom_name ,dom_name)
 		#find if account private key file exist true then continue
 		#else generate new file
-		initiateGeneration
-		initiateChallenge
-		addDNSRecord
-		verifyDNSEntry
-		completeChallenge
-		downloadCertificate
-		cleanupDNSEntry
+		@subdomain_name = sub_dom_name
+		@domain_name = dom_name
+		puts(@subdom_name)
+		puts(@dom_name)
+		#initiateGeneration
+		#initiateChallenge
+		#addDNSRecord
+		#verifyDNSEntry
+		#completeChallenge
+		#downloadCertificate
+		#cleanupDNSEntry
 		#certificateDispatch
 	end
 end
