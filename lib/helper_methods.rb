@@ -72,10 +72,6 @@ class HelperMethods
 	end
 
 	def self.addDNSRecord
-		# get from amahi.org
-		@domain_name = 'linksam.tk'
-		# get from amahi.org
-		@subdomain_name = 'amahi'
 		# challenge name for dns-01 verification method
 		@challenge_name = @dns_challenge.record_name # => '_acme-challenge'
 		# challenge key for verification
@@ -162,16 +158,20 @@ class HelperMethods
 		generateCertificate
 	end
 
-	def self.generateCertificate
+	def self.generateCertificate(sub_dom_name ,dom_name)
 		#find if account private key file exist true then continue
 		#else generate new file
-		initiateGeneration
-		initiateChallenge
-		addDNSRecord
-		verifyDNSEntry
-		completeChallenge
-		downloadCertificate
-		cleanupDNSEntry
+		@subdomain_name = sub_dom_name
+		@domain_name = dom_name
+		puts(@subdom_name)
+		puts(@dom_name)
+		#initiateGeneration
+		#initiateChallenge
+		#addDNSRecord
+		#verifyDNSEntry
+		#completeChallenge
+		#downloadCertificate
+		#cleanupDNSEntry
 		#certificateDispatch
 	end
 end
