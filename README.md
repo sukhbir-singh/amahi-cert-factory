@@ -1,2 +1,2 @@
-# Let's encrypt backend
+# Amahi Let's encrypt certificate factory
 
